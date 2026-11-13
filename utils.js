@@ -1,14 +1,21 @@
+// GIGAPLUG - utils.js - How MENU looks on WhatsApp
 function formatMenu(plans) {
-  let msg = "*GIGAPLUG DATA MENU* 🔌\n";
-  const types = ["SME", "AWOOF", "GIFTING", "CG", "SMS"];
-  types.forEach(t => {
-    const filtered = plans.filter(p => p.type === t);
-    if (filtered.length > 0) {
-      msg += `\n*--- ${t} ---*\n`;
-      filtered.slice(0, 10).forEach(p => { msg += `ID ${p.id} - ${p.network} ${p.name} - ₦${p.selling}\n`; });
+  let msg = `*Welcome to GIGAPLUG* \nCheap Data, Fast Delivery, 24/7\n\nSend the ID number of the plan you want.\nExample: Send *2* for plan ID 2\n\n`;
+  const networks = ['MTN', 'GLO', 'AIRTEL', '9MOBILE'];
+  for (const net of networks) {
+    const netPlans = plans.filter(p => p.network === net);
+    if (netPlans.length === 0) continue;
+    msg += `*--- ${net} ---*\n`;
+    const types = ['SME', 'AWOOF', 'GIFTING', 'CG'];
+    for (const type of types) {
+      const typePlans = netPlans.filter(p => p.type === type);
+      if (typePlans.length === 0) continue;
+      msg += `*${type}*\n`;
+      typePlans.forEach(p => { msg += `${p.id}. ${p.name} - ₦${p.selling} (${p.validity})\n`; });
+      msg += `\n`;
     }
-  });
-  msg += `\nReply with ID. Example: 2\nThen send phone number`;
+  }
+  msg += `Send any message anytime to see this list again.`;
   return msg;
 }
 module.exports = { formatMenu };
