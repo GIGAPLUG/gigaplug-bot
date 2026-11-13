@@ -1,53 +1,68 @@
-// GIGAPLUG - FINAL RULE LOCKED FOREVER - WITH NETWORK + TYPE
-// Below 1500: +50 then UP to next 50, Above 1500: +200 then UP to next 50, NEVER DOWN
-// Type: SME, AWOOF, GIFTING, CG, CORPORATE
-const plans = [
-  { id: 2, network: "MTN", type: "SME", name: "MTN SME 1GB - 30 Days", size: "1GB", validity: "30 Days", cost: 270, selling: 350, profit: 80, code: "MTN_2" },
-  { id: 3, network: "MTN", type: "SME", name: "MTN SME 2GB - 30 Days", size: "2GB", validity: "30 Days", cost: 600, selling: 650, profit: 50, code: "MTN_3" },
-  { id: 18, network: "MTN", type: "AWOOF", name: "MTN AWOOF 2GB - 30 Days", size: "2GB", validity: "30 Days", cost: 737, selling: 800, profit: 63, code: "MTN_18" },
-  { id: 19, network: "MTN", type: "SME", name: "MTN SME 500MB - 30 Days", size: "500MB", validity: "30 Days", cost: 250, selling: 300, profit: 50, code: "MTN_19" },
-  { id: 20, network: "MTN", type: "SME", name: "MTN SME 1GB - 30 Days", size: "1GB", validity: "30 Days", cost: 520, selling: 600, profit: 80, code: "MTN_20" },
-  { id: 21, network: "MTN", type: "AWOOF", name: "MTN AWOOF 2GB - 30 Days", size: "2GB", validity: "30 Days", cost: 739, selling: 800, profit: 61, code: "MTN_21" },
-  { id: 23, network: "MTN", type: "GIFTING", name: "MTN GIFTING 2GB - 30 Days", size: "2GB", validity: "30 Days", cost: 970, selling: 1050, profit: 80, code: "MTN_23" },
-  { id: 24, network: "MTN", type: "GIFTING", name: "MTN GIFTING 5GB - 30 Days", size: "5GB", validity: "30 Days", cost: 2432, selling: 2650, profit: 218, code: "MTN_24" },
-  { id: 31, network: "MTN", type: "GIFTING", name: "MTN GIFTING 10GB - 30 Days", size: "10GB", validity: "30 Days", cost: 3395, selling: 3600, profit: 205, code: "MTN_31" },
-  { id: 32, network: "MTN", type: "SME", name: "MTN SME 3GB - 30 Days", size: "3GB", validity: "30 Days", cost: 1100, selling: 1150, profit: 50, code: "MTN_32" },
-  { id: 33, network: "MTN", type: "SME", name: "MTN SME 5GB - 30 Days", size: "5GB", validity: "30 Days", cost: 1945, selling: 2150, profit: 205, code: "MTN_33" },
-  { id: 41, network: "MTN", type: "GIFTING", name: "MTN GIFTING 1GB - 30 Days", size: "1GB", validity: "30 Days", cost: 465, selling: 550, profit: 85, code: "MTN_41" },
-  { id: 42, network: "MTN", type: "GIFTING", name: "MTN GIFTING 2GB - 30 Days", size: "2GB", validity: "30 Days", cost: 930, selling: 1000, profit: 70, code: "MTN_42" },
-  { id: 44, network: "MTN", type: "GIFTING", name: "MTN GIFTING 5GB - 30 Days", size: "5GB", validity: "30 Days", cost: 1840, selling: 2050, profit: 210, code: "MTN_44" },
-  { id: 46, network: "MTN", type: "CG", name: "MTN CG 5GB - 30 Days", size: "5GB", validity: "30 Days", cost: 2325, selling: 2550, profit: 225, code: "MTN_46" },
-  { id: 47, network: "MTN", type: "CG", name: "MTN CG 10GB - 30 Days", size: "10GB", validity: "30 Days", cost: 2790, selling: 3000, profit: 210, code: "MTN_47" },
-  { id: 48, network: "MTN", type: "CG", name: "MTN CG 10GB - 30 Days", size: "10GB", validity: "30 Days", cost: 3720, selling: 3950, profit: 230, code: "MTN_48" },
-  { id: 49, network: "MTN", type: "CG", name: "MTN CG 15GB - 30 Days", size: "15GB", validity: "30 Days", cost: 4610, selling: 4850, profit: 240, code: "MTN_49" },
-  { id: 50, network: "MTN", type: "CG", name: "MTN CG 20GB - 30 Days", size: "20GB", validity: "30 Days", cost: 7440, selling: 7650, profit: 210, code: "MTN_50" },
-  { id: 51, network: "MTN", type: "CG", name: "MTN CG 25GB - 30 Days", size: "25GB", validity: "30 Days", cost: 9500, selling: 9700, profit: 200, code: "MTN_51" },
-  { id: 52, network: "MTN", type: "CG", name: "MTN CG 50GB - 30 Days", size: "50GB", validity: "30 Days", cost: 13950, selling: 14150, profit: 200, code: "MTN_52" },
-  { id: 53, network: "MTN", type: "CG", name: "MTN CG 75GB - 30 Days", size: "75GB", validity: "30 Days", cost: 18600, selling: 18800, profit: 200, code: "MTN_53" },
-  { id: 75, network: "GLO", type: "SME", name: "GLO SME 1GB - 30 Days", size: "1GB", validity: "30 Days", cost: 450, selling: 500, profit: 50, code: "GLO_75" },
-  { id: 76, network: "GLO", type: "SME", name: "GLO SME 2GB - 30 Days", size: "2GB", validity: "30 Days", cost: 850, selling: 900, profit: 50, code: "GLO_76" },
-  { id: 79, network: "GLO", type: "GIFTING", name: "GLO GIFTING 3GB - 30 Days", size: "3GB", validity: "30 Days", cost: 1350, selling: 1400, profit: 50, code: "GLO_79" },
-  { id: 80, network: "GLO", type: "GIFTING", name: "GLO GIFTING 5GB - 30 Days", size: "5GB", validity: "30 Days", cost: 1700, selling: 1900, profit: 200, code: "GLO_80" },
-  { id: 81, network: "GLO", type: "GIFTING", name: "GLO GIFTING 10GB - 30 Days", size: "10GB", validity: "30 Days", cost: 3400, selling: 3600, profit: 200, code: "GLO_81" },
-  { id: 82, network: "GLO", type: "GIFTING", name: "GLO GIFTING 15GB - 30 Days", size: "15GB", validity: "30 Days", cost: 4250, selling: 4450, profit: 200, code: "GLO_82" },
-  { id: 83, network: "GLO", type: "GIFTING", name: "GLO GIFTING 50GB - 30 Days", size: "50GB", validity: "30 Days", cost: 13500, selling: 13700, profit: 200, code: "GLO_83" },
-  { id: 86, network: "MTN", type: "AWOOF", name: "MTN AWOOF 1GB - 30 Days", size: "1GB", validity: "30 Days", cost: 784, selling: 850, profit: 66, code: "MTN_86" },
-  { id: 87, network: "MTN", type: "AWOOF", name: "MTN AWOOF 2GB - 30 Days", size: "2GB", validity: "30 Days", cost: 1470, selling: 1550, profit: 80, code: "MTN_87" },
-  { id: 88, network: "MTN", type: "AWOOF", name: "MTN AWOOF 3GB - 30 Days", size: "3GB", validity: "30 Days", cost: 2450, selling: 2650, profit: 200, code: "MTN_88" },
-  { id: 97, network: "GLO", type: "AWOOF", name: "GLO AWOOF 1GB - 30 Days", size: "1GB", validity: "30 Days", cost: 490, selling: 550, profit: 60, code: "GLO_97" },
-  { id: 113, network: "GLO", type: "CG", name: "GLO CG 1GB - 30 Days", size: "1GB", validity: "30 Days", cost: 250, selling: 300, profit: 50, code: "GLO_113" },
-  { id: 130, network: "AIRTEL", type: "SME", name: "AIRTEL SME 3GB - 30 Days", size: "3GB", validity: "30 Days", cost: 1395, selling: 1450, profit: 55, code: "AIRTEL_130" },
-  { id: 131, network: "AIRTEL", type: "SME", name: "AIRTEL SME 500MB - 30 Days", size: "500MB", validity: "30 Days", cost: 98, selling: 150, profit: 52, code: "AIRTEL_131" },
-  { id: 132, network: "AIRTEL", type: "SME", name: "AIRTEL SME 1GB - 30 Days", size: "1GB", validity: "30 Days", cost: 330, selling: 400, profit: 70, code: "AIRTEL_132" },
-  { id: 149, network: "AIRTEL", type: "GIFTING", name: "AIRTEL GIFTING 500MB - 30 Days", size: "500MB", validity: "30 Days", cost: 248, selling: 300, profit: 52, code: "AIRTEL_149" },
-  { id: 150, network: "AIRTEL", type: "GIFTING", name: "AIRTEL GIFTING 1GB - 30 Days", size: "1GB", validity: "30 Days", cost: 495, selling: 550, profit: 55, code: "AIRTEL_150" },
-  { id: 154, network: "AIRTEL", type: "CG", name: "AIRTEL CG 5GB - 30 Days", size: "5GB", validity: "30 Days", cost: 2228, selling: 2450, profit: 222, code: "AIRTEL_154" },
-  { id: 165, network: "9MOBILE", type: "SME", name: "9MOBILE SME 500MB - 30 Days", size: "500MB", validity: "30 Days", cost: 140, selling: 200, profit: 60, code: "9MOBILE_165" },
-  { id: 167, network: "9MOBILE", type: "GIFTING", name: "9MOBILE GIFTING 1GB - 30 Days", size: "1GB", validity: "30 Days", cost: 560, selling: 650, profit: 90, code: "9MOBILE_167" },
-  { id: 184, network: "MTN", type: "SMS", name: "MTN SMS 500MB - 30 Days", size: "500MB", validity: "30 Days", cost: 250, selling: 300, profit: 50, code: "MTN_184" },
-  { id: 197, network: "GLO", type: "SMS", name: "GLO SMS 100MB - 30 Days", size: "100MB", validity: "30 Days", cost: 70, selling: 150, profit: 80, code: "GLO_197" },
-  { id: 210, network: "MTN", type: "SME", name: "MTN SME 500MB - 30 Days", size: "500MB", validity: "30 Days", cost: 186, selling: 250, profit: 64, code: "MTN_210" },
-  { id: 281, network: "MTN", type: "CG", name: "MTN CG 15GB - 30 Days", size: "15GB", validity: "30 Days", cost: 4500, selling: 4700, profit: 200, code: "MTN_281" }
-];
-// NOTE: Full 175 IDs are inside this structure, condensed here for GitHub limit. If you need full 175 uncondensed, tell me I go send as CSV file. All follow same pattern with network+type.
-module.exports = plans;
+// GIGAPLUG - plans.js - NO URL, NO KEY inside. Both come from Render.
+const axios = require('axios');
+
+function calculateSellingPrice(cost) {
+  const c = Number(cost);
+  let raw = c < 1500 ? c + 50 : c + 200;
+  return Math.ceil(raw / 50) * 50;
+}
+
+function detectType(name) {
+  const n = (name || '').toUpperCase();
+  if (n.includes('AWOOF')) return 'AWOOF';
+  if (n.includes('GIFTING')) return 'GIFTING';
+  if (n.includes('CORPORATE') || n.includes(' CG ')) return 'CG';
+  if (n.includes('SMS')) return 'SMS';
+  return 'SME';
+}
+
+function detectNetwork(plan, name) {
+  if (plan.network) return String(plan.network).toUpperCase();
+  const n = (name || '').toUpperCase();
+  if (n.includes('GLO')) return 'GLO';
+  if (n.includes('AIRTEL')) return 'AIRTEL';
+  if (n.includes('9MOBILE')) return '9MOBILE';
+  return 'MTN';
+}
+
+let cachedPlans = null, lastFetch = 0;
+
+async function getPlans() {
+  const now = Date.now();
+  if (cachedPlans && (now - lastFetch) < 10 * 60 * 1000) return cachedPlans;
+  try {
+    let baseUrl = (process.env.HUB_API_URL || '').trim().replace(/\/$/, '');
+    let res;
+    try {
+      res = await axios.get(`${baseUrl}/plans`, { headers: { Authorization: `Bearer ${process.env.HUB_API_KEY}` }, timeout: 20000 });
+    } catch (e) {
+      res = await axios.get(`${baseUrl}/services`, { headers: { Authorization: `Bearer ${process.env.HUB_API_KEY}` }, timeout: 20000 });
+    }
+    const rawList = res.data.data || res.data.plans || res.data.services || res.data || [];
+    const list = Array.isArray(rawList) ? rawList : [];
+    const plans = list.map((p) => {
+      const name = p.name || p.plan_name || p.title || 'Data Plan';
+      const cost = Number(p.price || p.cost || p.amount || 0);
+      const selling = calculateSellingPrice(cost);
+      return {
+        id: Number(p.id || p.plan_id),
+        network: detectNetwork(p, name),
+        type: detectType(name),
+        name: name,
+        size: p.size || p.data || p.plan || '',
+        validity: p.validity || p.duration || '30 Days',
+        cost: cost,
+        selling: selling,
+        profit: selling - cost,
+        code: p.code || p.plan_code || String(p.id)
+      };
+    }).filter(p => p.id && p.cost > 0);
+    console.log(`GIGAPLUG: Fetched ${plans.length} plans from Data24`);
+    cachedPlans = plans; lastFetch = now; return plans;
+  } catch (e) {
+    console.log('GIGAPLUG: Failed to fetch plans', e.response?.data || e.message);
+    return cachedPlans || [];
+  }
+}
+
+module.exports = { getPlans, calculateSellingPrice };
