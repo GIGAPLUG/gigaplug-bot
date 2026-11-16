@@ -3,12 +3,10 @@ require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
 const express = require("express");
-const qrcode = require("qrcode-terminal");
 
 const { Client, LocalAuth } = require("whatsapp-web.js");
 
 const { NETWORKS, getPlans } = require("./plans");
-
 const { makeReference, normalizePhone } = require("./utils");
 
 const {
@@ -22,11 +20,13 @@ const { purchaseData } = require("./hub");
 const PORT = Number(process.env.PORT || 3000);
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
-
 const ORDERS_FILE = path.join(DATA_DIR, "orders.json");
 
 const WEBHOOK_PATH = "/paystack-webhook";
 const CALLBACK_PATH = "/payment-callback";
+
+// YOUR WHATSAPP NUMBER
+const WHATSAPP_NUMBER = "2349011692833";
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -115,7 +115,7 @@ app.get("/health", (req, res) => {
   res.json({ ok: true, service: "GigaPlug" });
 });
 
-// WHATSAPP CLIENT
+// WHATSAPP CLIENT WITH PAIRING CODE
 
 const client = new Client({
   authStrategy: new LocalAuth({
@@ -124,6 +124,12 @@ const client = new Client({
       process.env.WA_AUTH_PATH ||
       path.join(DATA_DIR, "whatsapp-auth")
   }),
+
+  pairWithPhoneNumber: {
+    phoneNumber: WHATSAPP_NUMBER,
+    showNotification: true,
+    intervalMs: 180000
+  },
 
   puppeteer: {
     headless: true,
@@ -219,11 +225,19 @@ async function processPaidReference(reference) {
   }
 }
 
-// WHATSAPP QR CODE
+// WHATSAPP PAIRING CODE
 
-client.on("qr", qr => {
-  console.log("Scan this QR code with WhatsApp > Linked devices:");
-  qrcode.generate(qr, { small: true });
+client.on("code", code => {
+  console.log("");
+  console.log("==================================");
+  console.log("GIGAPLUG WHATSAPP PAIRING CODE");
+  console.log("==================================");
+  console.log("Your pairing code is:", code);
+  console.log("Open WhatsApp > Linked devices > Link a device.");
+  console.log("Choose Link with phone number instead.");
+  console.log("Enter the code displayed above.");
+  console.log("==================================");
+  console.log("");
 });
 
 client.on("loading_screen", (percent, message) => {
