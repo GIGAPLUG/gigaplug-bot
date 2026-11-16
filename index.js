@@ -5,20 +5,11 @@ const path = require("path");
 const express = require("express");
 const qrcode = require("qrcode-terminal");
 
-const {
-  Client,
-  LocalAuth
-} = require("whatsapp-web.js");
+const { Client, LocalAuth } = require("whatsapp-web.js");
 
-const {
-  NETWORKS,
-  getPlans
-} = require("./plans");
+const { NETWORKS, getPlans } = require("./plans");
 
-const {
-  makeReference,
-  normalizePhone
-} = require("./utils");
+const { makeReference, normalizePhone } = require("./utils");
 
 const {
   initializePayment,
@@ -26,18 +17,13 @@ const {
   verifyWebhookSignature
 } = require("./paystack");
 
-const {
-  purchaseData
-} = require("./hub");
+const { purchaseData } = require("./hub");
 
 const PORT = Number(process.env.PORT || 3000);
 
-const DATA_DIR =
-  process.env.DATA_DIR ||
-  path.join(__dirname, "data");
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 
-const ORDERS_FILE =
-  path.join(DATA_DIR, "orders.json");
+const ORDERS_FILE = path.join(DATA_DIR, "orders.json");
 
 const WEBHOOK_PATH = "/paystack-webhook";
 const CALLBACK_PATH = "/payment-callback";
@@ -50,9 +36,7 @@ if (!fs.existsSync(ORDERS_FILE)) {
 
 function readOrders() {
   try {
-    return JSON.parse(
-      fs.readFileSync(ORDERS_FILE, "utf8")
-    );
+    return JSON.parse(fs.readFileSync(ORDERS_FILE, "utf8"));
   } catch {
     return {};
   }
@@ -60,12 +44,7 @@ function readOrders() {
 
 function writeOrders(orders) {
   const temp = `${ORDERS_FILE}.tmp`;
-
-  fs.writeFileSync(
-    temp,
-    JSON.stringify(orders, null, 2)
-  );
-
+  fs.writeFileSync(temp, JSON.stringify(orders, null, 2));
   fs.renameSync(temp, ORDERS_FILE);
 }
 
@@ -81,38 +60,21 @@ app.post(
   express.raw({ type: "application/json" }),
   async (req, res) => {
     try {
-      const signature =
-        req.headers["x-paystack-signature"];
+      const signature = req.headers["x-paystack-signature"];
 
-      if (
-        !verifyWebhookSignature(
-          req.body,
-          signature
-        )
-      ) {
+      if (!verifyWebhookSignature(req.body, signature)) {
         return res.sendStatus(401);
       }
 
-      const event = JSON.parse(
-        req.body.toString("utf8")
-      );
+      const event = JSON.parse(req.body.toString("utf8"));
 
       res.sendStatus(200);
 
-      if (
-        event.event === "charge.success" &&
-        event.data?.reference
-      ) {
-        await processPaidReference(
-          event.data.reference
-        );
+      if (event.event === "charge.success" && event.data?.reference) {
+        await processPaidReference(event.data.reference);
       }
-
     } catch (error) {
-      console.error(
-        "Webhook error:",
-        error.message
-      );
+      console.error("Webhook error:", error.message);
 
       if (!res.headersSent) {
         res.sendStatus(400);
@@ -126,42 +88,31 @@ app.use(express.json());
 // HOME PAGE
 
 app.get("/", (req, res) => {
-  res.send("GigaPlug bot is running.");
+  res.send("GigaPlug WhatsApp Bot is running.");
 });
 
-// PAYSTACK CALLBACK
+// PAYMENT CALLBACK
 
-app.get(
-  CALLBACK_PATH,
-  async (req, res) => {
-    const reference = String(
-      req.query.reference || ""
-    );
+app.get(CALLBACK_PATH, async (req, res) => {
+  const reference = String(req.query.reference || "");
 
-    if (reference) {
-      try {
-        await processPaidReference(reference);
-      } catch (error) {
-        console.error(
-          "Callback error:",
-          error.message
-        );
-      }
+  if (reference) {
+    try {
+      await processPaidReference(reference);
+    } catch (error) {
+      console.error("Callback error:", error.message);
     }
-
-    res.send(
-      "Thank you. GigaPlug is checking your payment. Return to WhatsApp for your order update."
-    );
   }
-);
+
+  res.send(
+    "Thank you. GigaPlug is checking your payment. Return to WhatsApp for your order update."
+  );
+});
 
 // HEALTH CHECK
 
 app.get("/health", (req, res) => {
-  res.json({
-    ok: true,
-    service: "GigaPlug"
-  });
+  res.json({ ok: true, service: "GigaPlug" });
 });
 
 // WHATSAPP CLIENT
@@ -183,22 +134,19 @@ const client = new Client({
   }
 });
 
-// SEND WHATSAPP MESSAGE
+// SEND WHATSAPP UPDATE
 
 async function sendOrderUpdate(chatId, text) {
   if (client.info) {
     try {
       await client.sendMessage(chatId, text);
     } catch (error) {
-      console.error(
-        "WhatsApp notification failed:",
-        error.message
-      );
+      console.error("WhatsApp notification failed:", error.message);
     }
   }
 }
 
-// VERIFY PAYMENT AND REQUEST DATA
+// PROCESS CONFIRMED PAYMENT
 
 async function processPaidReference(reference) {
   const order = orders[reference];
@@ -217,21 +165,14 @@ async function processPaidReference(reference) {
     !payment ||
     payment.status !== "success" ||
     payment.currency !== "NGN" ||
-    Number(payment.amount) !==
-      Number(order.amountKobo)
+    Number(payment.amount) !== Number(order.amountKobo)
   ) {
-    console.log(
-      "Payment not confirmed or amount mismatch:",
-      reference
-    );
-
+    console.log("Payment not confirmed or amount mismatch:", reference);
     return;
   }
 
   order.status = "processing";
-  order.paidAt =
-    payment.paid_at ||
-    new Date().toISOString();
+  order.paidAt = payment.paid_at || new Date().toISOString();
 
   writeOrders(orders);
 
@@ -246,8 +187,7 @@ async function processPaidReference(reference) {
     if (result && result.status === true) {
       order.status = "delivered";
       order.supplierResponse = result;
-      order.deliveredAt =
-        new Date().toISOString();
+      order.deliveredAt = new Date().toISOString();
 
       writeOrders(orders);
 
@@ -255,7 +195,6 @@ async function processPaidReference(reference) {
         order.chatId,
         `✅ GigaPlug: Your ${order.network} ${order.planName} purchase for ${order.recipientPhone} has been submitted successfully. Thank you for using GigaPlug!`
       );
-
     } else {
       order.status = "supplier_review";
       order.supplierResponse = result || null;
@@ -267,13 +206,9 @@ async function processPaidReference(reference) {
         `Your payment is confirmed, but data delivery needs checking. Order reference: ${reference}. Please do not pay again. Contact GigaPlug support.`
       );
     }
-
   } catch (error) {
     order.status = "supplier_review";
-
-    order.supplierError =
-      error.response?.data ||
-      error.message;
+    order.supplierError = error.response?.data || error.message;
 
     writeOrders(orders);
 
@@ -287,36 +222,31 @@ async function processPaidReference(reference) {
 // WHATSAPP QR CODE
 
 client.on("qr", qr => {
-  console.log(
-    "Scan this QR code with WhatsApp > Linked devices:"
-  );
-
+  console.log("Scan this QR code with WhatsApp > Linked devices:");
   qrcode.generate(qr, { small: true });
 });
 
-client.on("ready", () => {
-  console.log("GigaPlug WhatsApp is ready.");
+client.on("loading_screen", (percent, message) => {
+  console.log("WhatsApp loading:", percent, message);
 });
 
 client.on("authenticated", () => {
-  console.log("WhatsApp authenticated.");
+  console.log("WhatsApp authenticated successfully.");
+});
+
+client.on("ready", () => {
+  console.log("GigaPlug WhatsApp is ready!");
 });
 
 client.on("auth_failure", message => {
-  console.error(
-    "WhatsApp authentication failure:",
-    message
-  );
+  console.error("WhatsApp authentication failure:", message);
 });
 
 client.on("disconnected", reason => {
-  console.log(
-    "WhatsApp disconnected:",
-    reason
-  );
+  console.log("WhatsApp disconnected:", reason);
 });
 
-// BOT MENUS
+// MAIN MENU
 
 function menuText() {
   return `WELCOME TO GIGAPLUG!
@@ -327,6 +257,8 @@ Where we sell data.
 
 Reply with 1 or 2.`;
 }
+
+// NETWORK MENU
 
 function networkText() {
   return `Choose your network:
@@ -351,55 +283,27 @@ client.on("message", async message => {
     }
 
     const chatId = message.from;
-    const text = String(
-      message.body || ""
-    ).trim();
-
+    const text = String(message.body || "").trim();
     const lower = text.toLowerCase();
 
-    let session =
-      sessions.get(chatId) ||
-      { step: "menu" };
+    let session = sessions.get(chatId) || { step: "menu" };
 
-    if (
-      ["hi", "hello", "hey", "menu", "start"].includes(lower)
-    ) {
-      sessions.set(chatId, {
-        step: "menu"
-      });
-
+    if (["hi", "hello", "hey", "menu", "start"].includes(lower)) {
+      sessions.set(chatId, { step: "menu" });
       return message.reply(menuText());
     }
 
     // MAIN MENU
 
-    if (
-      session.step === "menu" ||
-      text === "1" ||
-      text === "2"
-    ) {
-      if (
-        text === "1" ||
-        lower === "buy data"
-      ) {
-        sessions.set(chatId, {
-          step: "network"
-        });
-
+    if (session.step === "menu" || text === "1" || text === "2") {
+      if (text === "1" || lower === "buy data") {
+        sessions.set(chatId, { step: "network" });
         return message.reply(networkText());
       }
 
-      if (
-        text === "2" ||
-        lower === "check order"
-      ) {
-        sessions.set(chatId, {
-          step: "order_lookup"
-        });
-
-        return message.reply(
-          "Send your GigaPlug order reference."
-        );
+      if (text === "2" || lower === "check order") {
+        sessions.set(chatId, { step: "order_lookup" });
+        return message.reply("Send your GigaPlug order reference.");
       }
 
       return message.reply(menuText());
@@ -410,10 +314,7 @@ client.on("message", async message => {
     if (session.step === "order_lookup") {
       const order = orders[text];
 
-      if (
-        !order ||
-        order.chatId !== chatId
-      ) {
+      if (!order || order.chatId !== chatId) {
         return message.reply(
           "I couldn't find that order. Check the reference and try again."
         );
@@ -446,11 +347,7 @@ client.on("message", async message => {
         );
       }
 
-      session = {
-        step: "plan",
-        networkId
-      };
-
+      session = { step: "plan", networkId };
       sessions.set(chatId, session);
 
       const lines = plans.map(
@@ -467,7 +364,6 @@ client.on("message", async message => {
 
     if (session.step === "plan") {
       const plans = getPlans(session.networkId);
-
       const index = Number(text) - 1;
 
       if (
@@ -495,7 +391,7 @@ client.on("message", async message => {
       );
     }
 
-    // RECIPIENT PHONE AND PAYMENT
+    // PHONE NUMBER AND PAYMENT
 
     if (session.step === "phone") {
       const phone = normalizePhone(text);
@@ -551,8 +447,11 @@ client.on("message", async message => {
         }
       });
 
-      order.checkoutUrl =
-        checkout.authorization_url;
+      if (!checkout || !checkout.authorization_url) {
+        throw new Error("Paystack did not return a checkout URL.");
+      }
+
+      order.checkoutUrl = checkout.authorization_url;
 
       orders[reference] = order;
       writeOrders(orders);
@@ -571,9 +470,7 @@ client.on("message", async message => {
       );
     }
 
-    return message.reply(
-      "Type MENU to start again."
-    );
+    return message.reply("Type MENU to start again.");
 
   } catch (error) {
     console.error(
@@ -587,19 +484,14 @@ client.on("message", async message => {
   }
 });
 
-// START SERVER
+// START WEB SERVER
 
 app.listen(PORT, () => {
-  console.log(
-    `GigaPlug web server listening on port ${PORT}`
-  );
+  console.log(`GigaPlug web server listening on port ${PORT}`);
 });
 
 // START WHATSAPP
 
 client.initialize().catch(error => {
-  console.error(
-    "WhatsApp startup error:",
-    error.message
-  );
+  console.error("WhatsApp startup error:", error);
 });
