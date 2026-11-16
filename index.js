@@ -3,8 +3,13 @@ require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
 const express = require("express");
+const baileys = require("@whiskeysockets/baileys");
 
-const { Client, LocalAuth } = require("whatsapp-web.js");
+const makeWASocket = baileys.default || baileys;
+const {
+  useMultiFileAuthState,
+  DisconnectReason
+} = baileys;
 
 const { NETWORKS, getPlans } = require("./plans");
 const { makeReference, normalizePhone } = require("./utils");
@@ -22,13 +27,17 @@ const PORT = Number(process.env.PORT || 3000);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const ORDERS_FILE = path.join(DATA_DIR, "orders.json");
 
+const AUTH_DIR =
+  process.env.BAILEYS_AUTH_PATH ||
+  path.join(DATA_DIR, "baileys-auth");
+
+const WHATSAPP_NUMBER = "2349011692833";
+
 const WEBHOOK_PATH = "/paystack-webhook";
 const CALLBACK_PATH = "/payment-callback";
 
-// YOUR WHATSAPP NUMBER
-const WHATSAPP_NUMBER = "2349011692833";
-
 fs.mkdirSync(DATA_DIR, { recursive: true });
+fs.mkdirSync(AUTH_DIR, { recursive: true });
 
 if (!fs.existsSync(ORDERS_FILE)) {
   fs.writeFileSync(ORDERS_FILE, "{}");
@@ -52,6 +61,10 @@ const orders = readOrders();
 const sessions = new Map();
 
 const app = express();
+
+let waSocket = null;
+let isWhatsAppReady = false;
+let reconnecting = false;
 
 // PAYSTACK WEBHOOK
 
@@ -112,43 +125,25 @@ app.get(CALLBACK_PATH, async (req, res) => {
 // HEALTH CHECK
 
 app.get("/health", (req, res) => {
-  res.json({ ok: true, service: "GigaPlug" });
-});
-
-// WHATSAPP CLIENT WITH PAIRING CODE
-
-const client = new Client({
-  authStrategy: new LocalAuth({
-    clientId: "gigaplug",
-    dataPath:
-      process.env.WA_AUTH_PATH ||
-      path.join(DATA_DIR, "whatsapp-auth")
-  }),
-
-  pairWithPhoneNumber: {
-    phoneNumber: WHATSAPP_NUMBER,
-    showNotification: true,
-    intervalMs: 180000
-  },
-
-  puppeteer: {
-    headless: true,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox"
-    ]
-  }
+  res.json({
+    ok: true,
+    service: "GigaPlug",
+    whatsapp: isWhatsAppReady ? "connected" : "disconnected"
+  });
 });
 
 // SEND WHATSAPP UPDATE
 
 async function sendOrderUpdate(chatId, text) {
-  if (client.info) {
-    try {
-      await client.sendMessage(chatId, text);
-    } catch (error) {
-      console.error("WhatsApp notification failed:", error.message);
-    }
+  if (!waSocket || !isWhatsAppReady) {
+    console.log("WhatsApp unavailable. Notification not sent.");
+    return;
+  }
+
+  try {
+    await waSocket.sendMessage(chatId, { text });
+  } catch (error) {
+    console.error("WhatsApp notification failed:", error.message);
   }
 }
 
@@ -225,41 +220,6 @@ async function processPaidReference(reference) {
   }
 }
 
-// WHATSAPP PAIRING CODE
-
-client.on("code", code => {
-  console.log("");
-  console.log("==================================");
-  console.log("GIGAPLUG WHATSAPP PAIRING CODE");
-  console.log("==================================");
-  console.log("Your pairing code is:", code);
-  console.log("Open WhatsApp > Linked devices > Link a device.");
-  console.log("Choose Link with phone number instead.");
-  console.log("Enter the code displayed above.");
-  console.log("==================================");
-  console.log("");
-});
-
-client.on("loading_screen", (percent, message) => {
-  console.log("WhatsApp loading:", percent, message);
-});
-
-client.on("authenticated", () => {
-  console.log("WhatsApp authenticated successfully.");
-});
-
-client.on("ready", () => {
-  console.log("GigaPlug WhatsApp is ready!");
-});
-
-client.on("auth_failure", message => {
-  console.error("WhatsApp authentication failure:", message);
-});
-
-client.on("disconnected", reason => {
-  console.log("WhatsApp disconnected:", reason);
-});
-
 // MAIN MENU
 
 function menuText() {
@@ -285,20 +245,41 @@ function networkText() {
 Reply with the number.`;
 }
 
-// RECEIVE CUSTOMER MESSAGES
+// MESSAGE PROCESSING
 
-client.on("message", async message => {
+async function handleMessage(sock, incoming) {
   try {
+    const chatId = incoming.key.remoteJid;
+
     if (
-      message.from.endsWith("@g.us") ||
-      message.from === "status@broadcast"
+      !chatId ||
+      chatId.endsWith("@g.us") ||
+      chatId === "status@broadcast" ||
+      incoming.key.fromMe
     ) {
       return;
     }
 
-    const chatId = message.from;
-    const text = String(message.body || "").trim();
+    const msg = incoming.message || {};
+
+    const text = String(
+      msg.conversation ||
+      msg.extendedTextMessage?.text ||
+      msg.imageMessage?.caption ||
+      msg.videoMessage?.caption ||
+      ""
+    ).trim();
+
+    if (!text) return;
+
     const lower = text.toLowerCase();
+
+    const message = {
+      from: chatId,
+      body: text,
+      reply: async (replyText) =>
+        sock.sendMessage(chatId, { text: replyText })
+    };
 
     let session = sessions.get(chatId) || { step: "menu" };
 
@@ -492,11 +473,112 @@ client.on("message", async message => {
       error.response?.data || error.message
     );
 
-    return message.reply(
-      "Sorry, GigaPlug could not process that request right now. Please try again shortly or type MENU."
-    );
+    try {
+      await sock.sendMessage(incoming.key.remoteJid, {
+        text: "Sorry, GigaPlug could not process that request right now. Please try again shortly or type MENU."
+      });
+    } catch (sendError) {
+      console.error("Reply error:", sendError.message);
+    }
   }
-});
+}
+
+// WHATSAPP CONNECTION
+
+async function connectWhatsApp() {
+  if (reconnecting) return;
+  reconnecting = true;
+
+  try {
+    const { state, saveCreds } =
+      await useMultiFileAuthState(AUTH_DIR);
+
+    const sock = makeWASocket({
+      auth: state,
+      printQRInTerminal: false,
+      markOnlineOnConnect: false,
+      logger: require("pino")({ level: "silent" })
+    });
+
+    waSocket = sock;
+
+    sock.ev.on("creds.update", saveCreds);
+
+    sock.ev.on("connection.update", async update => {
+      const { connection, lastDisconnect } = update;
+
+      if (connection === "connecting") {
+        console.log("GIGAPLUG is connecting to WhatsApp...");
+      }
+
+      if (connection === "open") {
+        isWhatsAppReady = true;
+        console.log("==================================");
+        console.log("GIGAPLUG WHATSAPP CONNECTED!");
+        console.log("==================================");
+      }
+
+      if (connection === "close") {
+        isWhatsAppReady = false;
+
+        const statusCode =
+          lastDisconnect?.error?.output?.statusCode;
+
+        console.log("WhatsApp connection closed:", statusCode);
+
+        if (statusCode !== DisconnectReason.loggedOut) {
+          console.log("Trying to reconnect...");
+          setTimeout(() => {
+            reconnecting = false;
+            connectWhatsApp();
+          }, 5000);
+        } else {
+          console.log(
+            "WhatsApp logged out. A new pairing is required."
+          );
+          reconnecting = false;
+        }
+      }
+    });
+
+    sock.ev.on("messages.upsert", async ({ messages, type }) => {
+      if (type !== "notify") return;
+
+      for (const incoming of messages) {
+        await handleMessage(sock, incoming);
+      }
+    });
+
+    // REQUEST PAIRING CODE
+
+    if (!state.creds.registered) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      const code = await sock.requestPairingCode(
+        WHATSAPP_NUMBER
+      );
+
+      console.log("");
+      console.log("==================================");
+      console.log("GIGAPLUG WHATSAPP PAIRING CODE");
+      console.log("==================================");
+      console.log("Your pairing code is:", code);
+      console.log("Open WhatsApp > Linked devices.");
+      console.log("Choose Link with phone number instead.");
+      console.log("Enter this code.");
+      console.log("==================================");
+      console.log("");
+    }
+
+    reconnecting = false;
+
+  } catch (error) {
+    console.error("WhatsApp startup error:", error.message);
+    reconnecting = false;
+
+    setTimeout(connectWhatsApp, 10000);
+  }
+}
 
 // START WEB SERVER
 
@@ -506,6 +588,4 @@ app.listen(PORT, () => {
 
 // START WHATSAPP
 
-client.initialize().catch(error => {
-  console.error("WhatsApp startup error:", error);
-});
+connectWhatsApp();
